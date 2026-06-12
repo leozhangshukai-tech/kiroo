@@ -20,8 +20,15 @@ services:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - LZU_MODE=${LZU_MODE:-true}
       - SMS_ENABLED=false
+      - NODE_OPTIONS=--max-old-space-size=1024
     volumes:
       - app_data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+        reservations:
+          memory: 512M
 
 volumes:
   app_data:

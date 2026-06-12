@@ -102,53 +102,22 @@ function generateCharts(scores) {
  * 调用DeepSeek API生成文字解析
  */
 async function callAIForText(scores, userName) {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey || !apiKey.startsWith('sk-') || apiKey.length < 30) {
-    console.warn('[LZU Generator] DEEPSEEK_API_KEY not configured, using placeholder text');
-    return null;
-  }
-
+  const { callDeepSeek } = require('./deepseekClient');
   const prompt = buildAIPrompt(scores, userName);
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
+  const content = await callDeepSeek({
+    prompt,
+    maxTokens: 4096,
+    temperature: 0.7,
+    timeoutMs: 120000,
+  });
 
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 4096,
-        temperature: 0.7,
-      }),
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      console.error(`[LZU Generator] DeepSeek API error: ${response.status}`);
-      return null;
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content ?? '';
-
-    if (!content || content.length < 100) {
-      console.error('[LZU Generator] Empty or too short AI response');
-      return null;
-    }
-
-    return content;
-  } catch (err) {
-    console.error('[LZU Generator] AI call error:', err.message);
+  if (!content || content.length < 100) {
+    console.error('[LZU Generator] Empty or too short AI response');
     return null;
   }
+
+  return content;
 }
 
 /**

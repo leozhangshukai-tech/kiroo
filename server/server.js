@@ -20,51 +20,21 @@ app.post('/api/generate-report', async (req, res) => {
     return res.status(400).json({ error: 'prompt is required' });
   }
 
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    console.error('DEEPSEEK_API_KEY not configured');
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-      }),
+    const { callDeepSeek } = require('./services/deepseekClient');
+    const content = await callDeepSeek({
+      prompt,
+      maxTokens: 2048,
+      temperature: 0.7,
+      timeoutMs: 60000,
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      console.error(`DeepSeek API error: ${response.status}`);
-      return res.status(response.status).json({
-        error: 'AI service error',
-        status: response.status
-      });
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content ?? '';
-
-    if (!content || content.length < 50) {
-      return res.status(500).json({ error: 'Empty response from AI' });
+    if (!content) {
+      return res.status(500).json({ error: 'AI service unavailable' });
     }
 
     res.json({ content });
   } catch (err) {
-    if (err.name === 'AbortError') {
-      return res.status(504).json({ error: 'Request timeout' });
-    }
     console.error('API proxy error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -78,46 +48,18 @@ app.post('/api/generate-comprehensive-report', async (req, res) => {
     return res.status(400).json({ error: 'prompt is required' });
   }
 
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    console.error('DEEPSEEK_API_KEY not configured');
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
-
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 4096,
-        response_format: { type: 'json_object' },
-      }),
+    const { callDeepSeek } = require('./services/deepseekClient');
+    const content = await callDeepSeek({
+      prompt,
+      maxTokens: 4096,
+      temperature: 0.7,
+      timeoutMs: 120000,
+      jsonMode: true,
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      console.error(`DeepSeek API error: ${response.status}`);
-      return res.status(response.status).json({
-        error: 'AI service error',
-        status: response.status
-      });
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content ?? '';
-
-    if (!content || content.length < 50) {
-      return res.status(500).json({ error: 'Empty response from AI' });
+    if (!content) {
+      return res.status(500).json({ error: 'AI service unavailable' });
     }
 
     try {
@@ -127,9 +69,6 @@ app.post('/api/generate-comprehensive-report', async (req, res) => {
       res.json({ content });
     }
   } catch (err) {
-    if (err.name === 'AbortError') {
-      return res.status(504).json({ error: 'Request timeout' });
-    }
     console.error('API proxy error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -208,9 +147,14 @@ app.post('/api/reports/save', async (req, res) => {
   }
 });
 
-// 健康检查接口
+// 健康检查接口（含队列状态，供前端轮询）
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
+  const queueStatus = require('./services/queueService').getStatus();
+  res.json({
+    status: 'ok',
+    time: new Date().toISOString(),
+    queue: queueStatus,
+  });
 });
 
 // ============================================================

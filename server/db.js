@@ -13,6 +13,18 @@ let db = null;
 let pool = null;
 let transactionDepth = 0;   // Track nested transaction depth
 
+// ============ SQLite 写入互斥锁（防止并发写冲突） ============
+// 50人同时提交时，写操作必须串行化，否则 SQLite 会报 BUSY
+let writeMutex = Promise.resolve();
+function withWriteLock(fn) {
+  const next = writeMutex.then(
+    () => fn(),
+    () => fn()   // 即使前一个 rejected 也不中断链
+  );
+  writeMutex = next.catch(() => {});
+  return next;
+}
+
 function normalizeSQL(sql) {
   return sql
     .replace(/\bNOW\(\)/gi, "datetime('now')")
@@ -73,13 +85,23 @@ async function initDatabase() {
     console.log('[DB] Schema initialized');
   }
 
+  // 启用 WAL 模式 — 允许并发读，减少写锁冲突
+  try {
+    db.exec('PRAGMA journal_mode=WAL');
+    db.exec('PRAGMA busy_timeout=5000');
+    console.log('[DB] WAL mode enabled, busy_timeout=5000ms');
+  } catch (e) {
+    console.log('[DB] WAL mode not supported (sql.js limitation), using write mutex');
+  }
+
   pool = {
     async query(sql, params) {
       const upper = sql.trim().toUpperCase();
       if (upper.startsWith('SELECT') || upper.startsWith('WITH') || upper.startsWith('PRAGMA')) {
         return [selectQuery(sql, params), []];
       }
-      const result = execWrite(sql, params);
+      // 所有写操作通过互斥锁串行化，防止 SQLite 并发写冲突
+      const result = await withWriteLock(() => execWrite(sql, params));
       saveToDisk(); // Only saves if not in transaction
       return [result, []];
     },
@@ -89,18 +111,37 @@ async function initDatabase() {
 
       const conn = {
         async query(sql, params) {
-          return pool.query(sql, params);
+          const upper = sql.trim().toUpperCase();
+          if (upper.startsWith('SELECT') || upper.startsWith('WITH') || upper.startsWith('PRAGMA')) {
+            return pool.query(sql, params);
+          }
+          // 事务内写操作也需要走互斥锁
+          return withWriteLock(async () => {
+            const normalized = normalizeSQL(sql);
+            const stmt = db.prepare(normalized);
+            if (params.length > 0) stmt.bind(params);
+            stmt.step();
+            stmt.free();
+
+            const idStmt = db.prepare("SELECT last_insert_rowid() AS id");
+            let insertId = 0;
+            if (idStmt.step()) insertId = idStmt.getAsObject().id;
+            idStmt.free();
+
+            const changes = db.getRowsModified();
+            return [{ insertId, affectedRows: changes }, []];
+          });
         },
         async beginTransaction() {
           if (!inTx) {
-            db.exec('BEGIN TRANSACTION');
+            await withWriteLock(() => { db.exec('BEGIN TRANSACTION'); });
             transactionDepth++;
             inTx = true;
           }
         },
         async commit() {
           if (!inTx) return;
-          db.exec('COMMIT');
+          await withWriteLock(() => { db.exec('COMMIT'); });
           transactionDepth--;
           inTx = false;
           // Now safe to save
@@ -108,7 +149,7 @@ async function initDatabase() {
         },
         async rollback() {
           if (!inTx) return;
-          db.exec('ROLLBACK');
+          await withWriteLock(() => { db.exec('ROLLBACK'); });
           transactionDepth--;
           inTx = false;
         },
