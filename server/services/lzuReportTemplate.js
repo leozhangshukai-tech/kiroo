@@ -4,7 +4,7 @@
  * ⚠️ 严格约束：此模版的CSS、模块顺序、表格结构、图表样式全部锁定。
  * 仅 {scores}、{aiText}、{charts} 为动态数据。
  * 排版、字体、字号、颜色、间距、圆角均不可变。
- * 参考模版：D:\AI测评小助手\报告模版兰大最终.html
+ * 参考模版：E:\kiroo\知识库\学生系统\报告模版兰大最终.html
  */
 
 const { nowChinaDate } = require('../utils/timeUtils');

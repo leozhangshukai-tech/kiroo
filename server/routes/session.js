@@ -10,6 +10,11 @@ const DEFAULT_QUESTIONNAIRE_PRIORITY_ORDER = [
   'leadership', 'temperament', 'big5', 'mbti', '16pf', 'creativity', 'holland'
 ];
 
+// 二代版测评优先级排序（待填充题库后补充）
+const SUCCESSOR_QUESTIONNAIRE_PRIORITY_ORDER = [
+  // 'successor-leadership', 'successor-traits', ...
+];
+
 // 兰大测评优先级排序
 const LZU_QUESTIONNAIRE_PRIORITY_ORDER = [
   'lzu-leadership', 'lzu-personality', 'lzu-creativity'
@@ -290,11 +295,25 @@ router.post('/:id/submit', authMiddleware, async (req, res) => {
       });
     }
 
+    // ========== Step 2.5: 确定报告类型和序号 ==========
+    // 查询用户身份
+    const [userIdentityRows] = await conn.query(
+      'SELECT identity_type FROM users WHERE id = ?', [req.user.id]
+    );
+    const reportType = (userIdentityRows.length > 0 && userIdentityRows[0].identity_type) || 'student';
+
+    // 获取该类型的最大序号
+    const [[{ maxSerialNo }]] = await conn.query(
+      'SELECT COALESCE(MAX(report_serial_no), 0) as maxSerialNo FROM comprehensive_reports WHERE report_type = ?',
+      [reportType]
+    );
+    const reportSerialNo = maxSerialNo + 1;
+
     // ========== Step 3: 存入数据库 ==========
     const [insertResult] = await conn.query(
       `INSERT INTO comprehensive_reports
-       (session_id, user_id, questionnaires_completed, score_summary, report_content, report_html, docx_path, comprehensive_score, review_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+       (session_id, user_id, questionnaires_completed, score_summary, report_content, report_html, docx_path, comprehensive_score, report_type, report_serial_no, review_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
        ON CONFLICT(session_id) DO UPDATE SET
          questionnaires_completed = excluded.questionnaires_completed,
          score_summary = excluded.score_summary,
@@ -302,6 +321,8 @@ router.post('/:id/submit', authMiddleware, async (req, res) => {
          report_html = excluded.report_html,
          docx_path = excluded.docx_path,
          comprehensive_score = excluded.comprehensive_score,
+         report_type = excluded.report_type,
+         report_serial_no = excluded.report_serial_no,
          review_status = 'pending',
          updated_at = datetime('now')`,
       [
@@ -313,6 +334,8 @@ router.post('/:id/submit', authMiddleware, async (req, res) => {
         reportHtml,
         pdfPath,
         comprehensiveScore,
+        reportType,
+        reportSerialNo,
       ]
     );
 

@@ -21,14 +21,14 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 
 interface AuthResponse {
   token: string
-  user: { id: number; nickname: string; phone: string }
+  user: { id: number; nickname: string; phone: string; identity_type: 'student' | 'successor' }
 }
 
 export const authService = {
-  register(phone: string, password: string, nickname?: string) {
+  register(phone: string, password: string, nickname?: string, identity_type?: string) {
     return request<AuthResponse>('/register', {
       method: 'POST',
-      body: JSON.stringify({ phone, password, nickname }),
+      body: JSON.stringify({ phone, password, nickname, identity_type }),
     })
   },
 
@@ -68,6 +68,13 @@ export const authService = {
     return request<{ message: string; token: string; nickname: string }>('/update-nickname', {
       method: 'POST',
       body: JSON.stringify({ nickname }),
+    })
+  },
+
+  updateIdentity(identity_type: 'student' | 'successor') {
+    return request<{ message: string; identity_type: string }>('/update-identity', {
+      method: 'POST',
+      body: JSON.stringify({ identity_type }),
     })
   },
 }

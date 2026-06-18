@@ -8,8 +8,8 @@
  *   4. 调用template组装完整HTML
  *   5. 通过Puppeteer渲染HTML为PDF
  *
- * 提示词参考：D:\AI测评小助手\提示词兰大最终终版.md
- * 模版参考：D:\AI测评小助手\报告模版兰大最终.html
+ * 提示词参考：E:\kiroo\知识库\学生系统\提示词兰大版最终终版.md
+ * 模版参考：E:\kiroo\知识库\学生系统\报告模版兰大最终.html
  */
 
 const fs = require('fs');
@@ -122,7 +122,7 @@ async function callAIForText(scores, userName) {
 
 /**
  * 构建发送给AI的Prompt
- * 参照：D:\AI测评小助手\提示词兰大最终终版.md
+ * 参照：E:\kiroo\知识库\学生系统\提示词兰大版最终终版.md
  * ⚠️ 此prompt严格控制AI输出内容和格式，排版/字体/图表/颜色由代码模板接管
  */
 function buildAIPrompt(scores, userName) {

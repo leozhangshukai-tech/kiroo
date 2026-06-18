@@ -7,10 +7,13 @@ import {
   type ReactNode,
 } from 'react'
 
+import type { IdentityType } from '../types'
+
 interface User {
   id: number
   nickname: string
   phone: string
+  identity_type: IdentityType
 }
 
 interface AuthState {

@@ -1,5 +1,7 @@
 // ==================== 问卷相关类型 ====================
 
+export type IdentityType = 'student' | 'successor'
+
 export type QuestionnaireCategory =
   | 'personality'
   | 'temperament'
@@ -13,6 +15,8 @@ export type QuestionnaireCategory =
   | 'lzu-leadership'
   | 'lzu-personality'
   | 'lzu-creativity'
+  | 'successor-leadership'
+  | 'successor-traits'
 
 export interface Option {
   id: string
@@ -105,6 +109,17 @@ export const LZU_QUESTIONNAIRE_PRIORITY: Array<{
 ]
 
 export const LZU_PRIORITY_ORDER = LZU_QUESTIONNAIRE_PRIORITY.map(q => q.id)
+
+// ==================== 二代版测评优先级配置 ====================
+
+export const SUCCESSOR_QUESTIONNAIRE_PRIORITY: Array<{
+  id: string
+  name: string
+  questions: number
+  estimatedMinutes: number
+}> = [
+  // 待二代题库就绪后填入
+]
 
 /** 是否为兰大测评模式 */
 export const IS_LZU_MODE = import.meta.env.VITE_LZU_MODE === 'true'

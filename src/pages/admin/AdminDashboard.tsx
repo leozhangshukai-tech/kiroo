@@ -34,6 +34,8 @@ interface ReportItem {
   nickname: string
   phone: string
   orderedQuestionnaires: string[]
+  reportType?: 'student' | 'successor'
+  reportSerialNo?: number | null
 }
 
 interface RankingItem {
@@ -103,6 +105,7 @@ export default function AdminDashboard() {
   // Filters
   const [filterStatus, setFilterStatus] = useState('')
   const [filterKeyword, setFilterKeyword] = useState('')
+  const [filterReportType, setFilterReportType] = useState('')
 
   // Detail modal
   const [detailReport, setDetailReport] = useState<ReportDetail | null>(null)
@@ -166,6 +169,7 @@ export default function AdminDashboard() {
       params.set('pageSize', '20')
       if (filterStatus) params.set('review_status', filterStatus)
       if (filterKeyword) params.set('keyword', filterKeyword)
+      if (filterReportType) params.set('report_type', filterReportType)
 
       const data = await apiFetch<{ reports: ReportItem[]; total: number }>(
         `/api/admin/reports?${params.toString()}`
@@ -364,6 +368,18 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
           <div className="flex flex-wrap gap-3 items-end">
             <div>
+              <label className="block text-xs text-gray-500 mb-1">报告类型</label>
+              <select
+                value={filterReportType}
+                onChange={e => setFilterReportType(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-indigo-400 outline-none"
+              >
+                <option value="">全部</option>
+                <option value="student">🎓 学生报告</option>
+                <option value="successor">🏢 二代报告</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-xs text-gray-500 mb-1">审核状态</label>
               <select
                 value={filterStatus}
@@ -401,8 +417,9 @@ export default function AdminDashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50">
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">ID</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">序号</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">用户</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">类型</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">手机号</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">综合得分</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">完成问卷</th>
@@ -414,16 +431,25 @@ export default function AdminDashboard() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 text-gray-400">加载中…</td>
+                    <td colSpan={9} className="text-center py-10 text-gray-400">加载中…</td>
                   </tr>
                 ) : reports.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 text-gray-400">暂无数据</td>
+                    <td colSpan={9} className="text-center py-10 text-gray-400">暂无数据</td>
                   </tr>
                 ) : (
                   reports.map(r => (
                     <tr key={r.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-500">#{r.id}</td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {r.reportSerialNo
+                          ? `${r.reportType === 'successor' ? '代' : '学'}-${String(r.reportSerialNo).padStart(3, '0')}`
+                          : `#${r.id}`}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.reportType === 'successor' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {r.reportType === 'successor' ? '二代' : '学生'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 font-medium text-gray-800">{r.nickname}</td>
                       <td className="px-4 py-3 text-gray-500">{r.phone || '-'}</td>
                       <td className="px-4 py-3">

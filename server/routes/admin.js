@@ -285,7 +285,7 @@ router.get('/reports', adminAuthMiddleware, async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 20;
   const offset = (page - 1) * pageSize;
-  const { review_status, keyword } = req.query;
+  const { review_status, keyword, report_type } = req.query;
 
   try {
     let where = [];
@@ -298,6 +298,11 @@ router.get('/reports', adminAuthMiddleware, async (req, res) => {
     if (keyword) {
       where.push('(u.nickname LIKE ? OR u.phone LIKE ?)');
       params.push(`%${keyword}%`, `%${keyword}%`);
+    }
+
+    if (report_type && ['student', 'successor'].includes(report_type)) {
+      where.push('cr.report_type = ?');
+      params.push(report_type);
     }
 
     const whereClause = where.length > 0 ? 'WHERE ' + where.join(' AND ') : '';
@@ -313,6 +318,7 @@ router.get('/reports', adminAuthMiddleware, async (req, res) => {
     const [rows] = await pool.query(
       `SELECT cr.id, cr.session_id AS sessionId, cr.comprehensive_score AS comprehensiveScore,
               cr.review_status AS reviewStatus, cr.review_comment AS reviewComment,
+              cr.report_type AS reportType, cr.report_serial_no AS reportSerialNo,
               cr.reviewed_at AS reviewedAt, cr.created_at AS createdAt,
               u.nickname, u.phone,
               s.ordered_questionnaires AS orderedQuestionnaires
@@ -503,8 +509,9 @@ router.post('/reports/:id/generate', adminAuthMiddleware, async (req, res) => {
   try {
     // 获取报告基本数据
     const [rows] = await pool.query(
-      `SELECT cr.id, cr.session_id AS sessionId, cr.user_id AS userId,
-              cr.score_summary AS scoreSummary, cr.report_content AS reportContent
+      `SELECT cr.id, cr.session_id AS sessionId, cr.user_id AS userId, cr.report_type AS reportType,
+              cr.score_summary AS scoreSummary, cr.report_content AS reportContent,
+              cr.report_serial_no AS reportSerialNo
        FROM comprehensive_reports cr
        WHERE cr.id = ?`,
       [req.params.id]
@@ -520,19 +527,51 @@ router.post('/reports/:id/generate', adminAuthMiddleware, async (req, res) => {
 
     // 获取用户信息
     const [userRows] = await pool.query(
-      'SELECT nickname FROM users WHERE id = ?', [report.userId]
+      'SELECT nickname, identity_type FROM users WHERE id = ?', [report.userId]
     );
     const userName = userRows.length > 0 ? userRows[0].nickname : '测评用户';
+    const userIdentity = userRows.length > 0 ? (userRows[0].identity_type || 'student') : 'student';
 
-    // 精准计分
-    const scores = lzuScoring.calculateLZUComprehensiveScore(scoreSummary);
+    // 根据用户身份选择不同的计分和报告生成逻辑
+    let result;
+    if (userIdentity === 'successor') {
+      // 二代版：调用二代计分和报告生成器（待实现，先放占位）
+      let successorScoring, successorGenerator;
+      try {
+        successorScoring = require('../services/successorScoringService');
+        successorGenerator = require('../services/successorReportGenerator');
+      } catch (e) {
+        return res.status(501).json({ error: '二代版报告生成器尚未就绪，请等待后续更新' });
+      }
+      const scores = successorScoring.calculateSuccessorScore(scoreSummary);
+      result = await queueService.enqueue(() => successorGenerator.generateReport({
+        scores,
+        userName,
+        sessionId: report.sessionId,
+      }));
+    } else {
+      // 学生版：使用现有的兰大报告生成逻辑
+      const scores = lzuScoring.calculateLZUComprehensiveScore(scoreSummary);
+      result = await queueService.enqueue(() => generateReport({
+        scores,
+        userName,
+        sessionId: report.sessionId,
+      }));
+    }
 
-    // 调用AI + 组装模版 + 生成PDF（通过队列限流）
-    const result = await queueService.enqueue(() => generateReport({
-      scores,
-      userName,
-      sessionId: report.sessionId,
-    }));
+    // 如果尚未分配序号，则自动分配
+    const reportType = report.reportType || userIdentity;
+    if (!report.reportSerialNo) {
+      const [[{ maxNo }]] = await pool.query(
+        'SELECT COALESCE(MAX(report_serial_no), 0) as maxNo FROM comprehensive_reports WHERE report_type = ?',
+        [reportType]
+      );
+      const serialNo = maxNo + 1;
+      await pool.query(
+        'UPDATE comprehensive_reports SET report_type = ?, report_serial_no = ? WHERE id = ?',
+        [reportType, serialNo, req.params.id]
+      );
+    }
 
     // 更新数据库：存储HTML预览 + PDF路径
     await pool.query(

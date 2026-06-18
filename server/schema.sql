@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   nickname TEXT NOT NULL DEFAULT '测评用户',
   avatar TEXT DEFAULT NULL,
   phone TEXT DEFAULT NULL,
+  identity_type TEXT CHECK(identity_type IN ('student', 'successor')) DEFAULT 'student',
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -93,6 +94,8 @@ CREATE TABLE IF NOT EXISTS comprehensive_reports (
   report_content TEXT NOT NULL DEFAULT '',
   report_html TEXT DEFAULT NULL,
   docx_path TEXT DEFAULT NULL,
+  report_type TEXT CHECK(report_type IN ('student', 'successor')) DEFAULT 'student',
+  report_serial_no INTEGER DEFAULT NULL,
   comprehensive_score NUMERIC NOT NULL,
   review_status TEXT CHECK(review_status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
   review_comment TEXT DEFAULT NULL,

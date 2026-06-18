@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>职业发展测评报告 | 兰大版 · 精准评估与规划</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #eef2f5;
+            font-family: 'Segoe UI', 'Roboto', 'Georgia', 'Times New Roman', serif;
+            padding: 48px 32px;
+            color: #1e2f3e;
+        }
+
+        .formal-report {
+            max-width: 1280px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+            padding: 40px 48px;
+            border: 1px solid #e2edf2;
+        }
+
+        @media (max-width: 760px) {
+            body {
+                padding: 20px 12px;
+            }
+            .formal-report {
+                padding: 24px 20px;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            .formal-report {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                padding: 20px;
+                max-width: 100%;
+                margin: 0;
+                border-radius: 0;
+            }
+            .graph-card, .insight-box {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            h2, h3 {
+                break-after: avoid;
+            }
+            canvas {
+                max-width: 100%;
+                height: auto;
+                background-color: white;
+            }
+            .gauge-container canvas, .radar-canvas-wrapper canvas {
+                background-color: white;
+            }
+            * {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
+            }
+            .bar-fill {
+                background-color: #2c5f8a !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .legend-color, .badge {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            footer {
+                margin-top: 20px;
+                break-before: avoid;
+            }
+        }
+
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1e4663;
+            border-left: 4px solid #eab308;
+            padding-left: 20px;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem 0;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #e9edf2;
+            color: #1e4663;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 1.4rem 0 0.8rem 0;
+            color: #2c5a7a;
+        }
+
+        .info-section {
+            margin: 20px 0 20px 0;
+        }
+
+        .info-line {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #eef2f8;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #2c5f8a;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.2rem 0;
+            font-size: 0.85rem;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 16px;
+            vertical-align: top;
+            text-align: left;
+        }
+
+        th {
+            background: #f8fafd;
+            font-weight: 600;
+            color: #1e3a5f;
+        }
+
+        .insight-box {
+            background: #f8fafc;
+            padding: 14px 18px;
+            margin: 16px 0;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            color: #2c3e50;
+            border-radius: 8px;
+        }
+
+        .insight-box p {
+            margin-bottom: 0.6em;
+        }
+        .insight-box p:last-child {
+            margin-bottom: 0;
+        }
+        .insight-box ul, .insight-box .action-list {
+            margin: 6px 0 4px 20px;
+            padding-left: 0;
+        }
+        .insight-box li {
+            margin-bottom: 4px;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1e4663;
+            border-left: 3px solid #eab308;
+            padding-left: 12px;
+        }
+
+        .graph-card {
+            margin: 20px 0;
+            padding: 16px;
+            border: 1px solid #e2edf2;
+            border-radius: 12px;
+            background: #ffffff;
+        }
+
+        .graph-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #2c5a7a;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .small-meta {
+            font-size: 0.7rem;
+            color: #5f6f82;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .horizontal-bar-container {
+            margin: 12px 0;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+        }
+
+        .bar-label {
+            width: 160px;
+            font-weight: 500;
+        }
+
+        .bar-bg {
+            flex: 1;
+            background: #e2e8f0;
+            border-radius: 10px;
+            height: 28px;
+            overflow: hidden;
+            margin-left: 10px;
+        }
+
+        .bar-fill {
+            background: #2c5f8a;
+            height: 100%;
+            width: 0%;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #6b7b8f;
+            border-top: 1px solid #e2edf2;
+        }
+
+        @media (max-width: 850px) {
+            .bar-label {
+                width: 130px;
+            }
+        }
+
+        .radar-canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        canvas#leadershipRadarChart {
+            max-width: 400px;
+            max-height: 400px;
+            width: 100%;
+            height: auto;
+            background: #ffffff;
+        }
+
+        .gauge-container {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        canvas#scoreGauge {
+            max-width: 360px;
+            width: 100%;
+            height: auto;
+            background: #ffffff;
+        }
+
+        .gauge-caption {
+            text-align: center;
+            font-weight: 500;
+            margin-top: 8px;
+            color: #1e4663;
+            font-size: 0.85rem;
+        }
+
+        .legend-colors {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+            font-size: 0.7rem;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 12px;
+        }
+
+        .career-tag {
+            background: #eef2fa;
+            border-radius: 40px;
+            padding: 6px 16px;
+            font-size: 0.85rem;
+            display: inline-block;
+            margin: 6px 8px 6px 0;
+            font-weight: 500;
+        }
+        .compact-list {
+            margin: 8px 0 0 18px;
+        }
+    </style>
+</head>
+<body>
+<div class="formal-report">
+    <h1>职业发展测评报告：管理类研究生综合评估（兰大版）</h1>
+    <div class="info-section">
+        <div class="info-line"><span class="badge">报告编号：LZU-2026-0609</span>   <span class="badge">测评对象：李知行（学术硕士·企业管理）</span></div>
+        <div class="info-line">测评日期：2026年6月9日</div>
+        <div class="info-line" style="margin-top: 16px; font-weight: 500;">测评工具：LASI领导风格问卷 + 16PF精选版（创造力/心理健康/管理潜能） + 创造力障碍测试，综合权重：领导风格30% | 16PF人格特质40% | 创造力障碍30%</div>
+        
+        <!-- 整体综合结论：已移除▶符号 -->
+        <div class="insight-box" style="margin-top: 20px;">
+            <div class="card-title">整体综合结论</div>
+            <p><strong>核心画像</strong>：高管理潜能(9.2/10) + 高创造力潜质(8.5/10) 的复合型人才。教练型领导风格为主，心理健康稳定，综合发展指数82.4分（进取型）。</p>
+            <p><strong>核心优势</strong>：管理潜能卓越，创新思维突出，心理韧性好；低心理障碍带来强安全感，适合引领团队与探索新方向。</p>
+            <p><strong>关键成长点</strong>：降低“认知定势”（避免过早评判方案），主动营造创新支持环境。从“分析者”进化为“行动型创新者”。 进取型阶段正是加速突破的黄金期，集中提升认知灵活性即可叩开卓越之门。</p>
+        </div>
+    </div>
+
+    <!-- ========= 领导风格分析 ========= -->
+    <h2>二、领导风格分析（24.8/30）</h2>
+    <h3>风格强度得分与主导风格</h3>
+    <table>
+        <thead><tr><th>领导风格类型</th><th>得分</th><th>满分</th><th>强度水平</th><th>行为特征描述</th></tr></thead>
+        <tbody>
+            <tr><td>指令型 (S1)</td><td>4</td><td>7</td><td>中等偏低</td><td>结构化指导，适合紧急任务，当前使用谨慎</td></tr>
+            <tr><td>教练型 (S2) ⭐ 主导风格</td><td>10</td><td>12</td><td>高</td><td>高任务+高关系，指导工作与成长并重</td></tr>
+            <tr><td>支持型 (S3) ⭐ 辅助风格</td><td>9</td><td>12</td><td>较高</td><td>高关系低任务，营造参与感与凝聚力</td></tr>
+            <tr><td>授权型 (S4)</td><td>6</td><td>12</td><td>中等</td><td>低任务低关系，对成熟团队可放权</td></tr>
+        </tbody>
+    </table>
+    <div class="graph-card">
+        <div class="graph-title">领导风格雷达图：相对强度百分比</div>
+        <div class="radar-canvas-wrapper"><canvas id="leadershipRadarChart" width="400" height="400" style="max-width:100%; height:auto;"></canvas></div>
+        <div class="small-meta">教练型(83%)与支持型(75%)双高，情境适应性良好；可适度强化指令型以应对高压场景。</div>
+    </div>
+    <div class="insight-box">
+        <div class="card-title">领导风格综合结论</div>
+        <p>✅ 主导教练型+支持型：善于平衡任务与人际，适合带领多元团队，激发成员自主性。<br>
+        ⚠️ 提升点：指令型偏弱。在危机或原则性问题时，可练习果断下达明确指令；授权型仍有发展空间。<br>
+        💡 建议：每月进行一次“有限信息决策”模拟，刻意强化单边指令能力，完善领导风格谱系。尤其在高压力场景下，适度提升指令型行为能快速建立团队方向感，与您现有的支持风格形成互补。</p>
+    </div>
+
+    <!-- ========= 16PF人格测验 ========= -->
+    <h2>三、16PF人格测验（32.5/40）</h2>
+    <h3>核心维度得分及评价</h3>
+    <table>
+        <thead><tr><th>16PF核心维度</th><th>得分(满分10)</th><th>标准分(1-10)</th><th>评价等级</th><th>子维度权重</th></tr></thead>
+        <tbody>
+            <tr><td>创造力</td><td>8.5</td><td>9</td><td>优秀</td><td>40%</td></tr>
+            <tr><td>心理健康</td><td>7.8</td><td>8</td><td>良好</td><td>30%</td></tr>
+            <tr><td>管理潜能</td><td>9.2</td><td>10</td><td>卓越</td><td>30%</td></tr>
+        </tbody>
+    </table>
+    <div class="graph-card">
+        <div class="graph-title">16PF核心维度得分（满分10）</div>
+        <div class="horizontal-bar-container">
+            <div class="bar-item"><span class="bar-label">创造力</span><div class="bar-bg"><div class="bar-fill" style="width: 85%;">8.5</div></div></div>
+            <div class="bar-item"><span class="bar-label">心理健康</span><div class="bar-bg"><div class="bar-fill" style="width: 78%;">7.8</div></div></div>
+            <div class="bar-item"><span class="bar-label">管理潜能</span><div class="bar-bg"><div class="bar-fill" style="width: 92%;">9.2</div></div></div>
+        </div>
+        <div class="small-meta">管理潜能卓越，创造力优秀，心理健康稳定 —— 复合型管理人才特质底座</div>
+    </div>
+    <h3>维度解读与行动指南</h3>
+    <div class="insight-box"><div class="card-title">创造力 (8.5/10 · 优秀）</div><p>敢于质疑常规，善于跨界联想，适合学术创新或商业方案设计。</p><p>✔ 行动：每周一次“反常识笔记”；用SCAMPER技法迭代论文或项目创意。</p></div>
+    <div class="insight-box"><div class="card-title">心理健康 (7.8/10 · 良好）</div><p>情绪稳定，抗压恢复力强，能胜任高挑战环境。</p><p>✔ 行动：建立压力预警清单，定期正念复盘，维持心理资本优势。</p></div>
+    <div class="insight-box"><div class="card-title">管理潜能 (9.2/10 · 卓越）</div><p>自然倾向协调矛盾、推动执行，具备非正式领导力。</p><p>✔ 行动：主动申请项目负责人，练习授权与战略反馈，积累领导经验。</p></div>
+    <div class="insight-box"><div class="card-title">16PF综合结论</div><p>“管理潜能卓越+创造力优秀”高潜组合，与教练型风格相互印证，适合管理咨询、产品创新、战略运营等复合型岗位。这种三高特质（潜能、创造力、心理稳定）在组织人才梯队中属于稀缺资源，尤需匹配创新驱动型岗位。</p></div>
+
+    <!-- ========= 创造力障碍测试 ========= -->
+    <h2>四、创造力障碍测试（25.1/30）</h2>
+    <h3>障碍类型得分、程度及抵抗水平</h3>
+    <table>
+        <thead><tr><th>障碍类型</th><th>得分（越高障碍越少）</th><th>满分</th><th>障碍程度</th><th>创造阻力解读</th></tr></thead>
+        <tbody>
+            <tr><td>心理障碍</td><td>13</td><td>16</td><td>低障碍 ✅</td><td>心理安全感强，敢于表达，较少自我设限</td></tr>
+            <tr><td>认知障碍</td><td>7</td><td>12</td><td>中障碍 ⚠️</td><td>倾向于快速评判，对不确定性耐受力一般</td></tr>
+            <tr><td>环境与资源障碍</td><td>11</td><td>20</td><td>中障碍 ⚠️</td><td>创新时间碎片化，外部资源待激活</td></tr>
+        </tbody>
+    </table>
+    <div class="graph-card">
+        <div class="graph-title">创造力障碍横向对比（得分越高障碍越小）</div>
+        <div class="horizontal-bar-container">
+            <div class="bar-item"><span class="bar-label">心理障碍</span><div class="bar-bg"><div class="bar-fill" style="width: 81%; background:#2c5f8a;">13/16</div></div></div>
+            <div class="bar-item"><span class="bar-label">认知障碍</span><div class="bar-bg"><div class="bar-fill" style="width: 58%; background:#2c5f8a;">7/12</div></div></div>
+            <div class="bar-item"><span class="bar-label">环境与资源障碍</span><div class="bar-bg"><div class="bar-fill" style="width: 55%; background:#2c5f8a;">11/20</div></div></div>
+        </div>
+        <div class="small-meta">心理韧性出色；主要掣肘为认知定势和环境资源限制</div>
+    </div>
+    <h3>维度解读与改善锚点</h3>
+    <div class="insight-box"><div class="card-title">心理障碍（低障碍）</div><p>不惧评价，完美主义可控。主动分享“半成熟想法”，做团队创意催化剂。</p></div>
+    <div class="insight-box"><div class="card-title">认知障碍（中障碍）</div><p>快速判断可行性，模糊耐受偏低。👉 练习“70%信息决策”，头脑风暴阶段禁止批判，强制列出10个非常规方案再评估。</p></div>
+    <div class="insight-box"><div class="card-title">环境与资源障碍（中障碍）</div><p>时间碎片化，缺少创意空间。👉 每周锁定“创意时间块”，加入创新社群，利用校内孵化器争取资源。</p></div>
+    <div class="insight-box"><div class="card-title">创造力障碍综合结论</div><p>心理安全感极佳，突破认知定势与环境约束后，创造力输出可提升一个量级。建议6个月内用设计思维工作坊刻意训练。尤其要警惕“过早收敛”倾向，延迟评判6秒以上可显著提升创意质量。</p></div>
+
+    <!-- ========= 综合评分汇总与等级评定 ========= -->
+    <h2>五、综合评分汇总与等级评定</h2>
+    <div class="graph-card">
+        <div class="graph-title">综合等级仪表盘</div>
+        <div class="gauge-container">
+            <canvas id="scoreGauge" width="400" height="220" style="width:100%; height:auto; max-width:400px;"></canvas>
+        </div>
+        <div class="gauge-caption">
+            🎯 当前综合得分 <strong>82.4分</strong> · 定位等级：<strong style="color:#eab308;">进取型 (75-89分)</strong>
+        </div>
+        <div class="legend-colors">
+            <span class="legend-item"><span class="legend-color" style="background:#9ca3af;"></span> 待发展型 (0-59)</span>
+            <span class="legend-item"><span class="legend-color" style="background:#60a5fa;"></span> 成长型 (60-74)</span>
+            <span class="legend-item"><span class="legend-color" style="background:#eab308;"></span> 进取型 (75-89)</span>
+            <span class="legend-item"><span class="legend-color" style="background:#10b981;"></span> 卓越型 (90-100)</span>
+        </div>
+        <div class="small-meta">指针指向82.4，处于进取型高位，距卓越型仅差7.6分，核心杠杆为降低认知障碍。</div>
+    </div>
+    <div class="insight-box">
+        <p><strong>得分结构</strong>：人格特质贡献突出（管理潜能卓越），领导风格成熟，创造力障碍抵抗中等偏上。将认知障碍得分从7/12提升至9/12，综合指数可望突破88分。</p>
+        <p><strong>综合诊断</strong>：进取型（75-89分），已具备优秀管理内核，聚焦模糊决策训练与创新落地，即可向卓越型跃升。</p>
+    </div>
+
+    <!-- ========= 职业发展建议与方向定位 ========= -->
+    <h2>六、职业发展建议与方向定位</h2>
+    <div class="insight-box">
+        <div class="card-title">适合岗位类别（匹配度高）</div>
+        <div style="margin: 8px 0;">
+            <span class="career-tag">🏆 管理咨询/战略分析</span>
+            <span class="career-tag">💡 创新产品经理</span>
+            <span class="career-tag">📈 组织发展/HRBP</span>
+            <span class="career-tag">⚙️ 项目集经理</span>
+            <span class="career-tag">🚀 科技企业管培生</span>
+        </div>
+        <p><strong>最佳匹配</strong>：管理类+技术研发类（创新驱动方向）。教练风格赋能团队，高创造力驱动业务突破，心理健康保障抗压韧性。优先考虑战略咨询、创新负责人、高科技企业管培等角色。</p>
+    </div>
+    <div class="insight-box">
+        <div class="card-title">关键发展行动（3项核心）</div>
+        <ul class="compact-list">
+            <li>🔹 <strong>打破认知定势</strong>：每两周用反向思考法或SCAMPER改造一个现有流程，强制延迟评判。</li>
+            <li>🔹 <strong>建设创新资源网</strong>：加入校企创新工坊、申请校级基金，每周保证2小时“深度创意块”。</li>
+            <li>🔹 <strong>强化指令型领导</strong>：在时间紧迫场景中主动决策，练习“有限信息下拍板”。</li>
+        </ul>
+    </div>
+    <div class="insight-box">
+        <div class="card-title">阶段性成长路径</div>
+        <ul class="compact-list">
+            <li>📌 <strong>短期（0-6个月）</strong>：完成一项跨领域创新课题；参加领导力刻意练习，提升指令风格。</li>
+            <li>📌 <strong>中期（6-18个月）</strong>：争取项目负责人实战机会，带队产出创新成果，积累作品集。</li>
+            <li>📌 <strong>长期（2-5年）</strong>：成为部门或业务单元负责人，以教练型领导力驱动团队创新文化。</li>
+        </ul>
+    </div>
+    <div class="insight-box">
+        <div class="card-title">最终建议</div>
+        <p>👉 推荐向战略咨询、创新管理或高科技企业管培方向深度发展。近期聚焦认知灵活性训练，中期积累真实团队领导经验。综合评估优秀，具备卓越领导者潜质。建议6个月后复测认知障碍维度，持续迭代领导风格。</p>
+        <p><strong>一句话寄语</strong>：数据印证你的潜力 —— 既有引领团队的魄力，又有创造突破的种子。从“分析者”进化为“行动型创新者”，让创造力落地成势。</p>
+    </div>
+
+    <footer>
+        本报告依据兰州大学管理学院职业发展测评系统生成（LASI + 16PF精选版 + 创造力障碍测试），结果用于职业规划参考。综合发展建议以能力提升与方向聚焦为主。<br>
+        * 打印或生成PDF时，请确保浏览器打印设置勾选“背景图形”，以保证图表颜色完整呈现。
+    </footer>
+</div>
+
+<script>
+    // 1. 领导风格雷达图
+    const styleLabels = ['指令型 (S1)', '教练型 (S2)', '支持型 (S3)', '授权型 (S4)'];
+    const rawScores = [4, 10, 9, 6];
+    const maxScores = [7, 12, 12, 12];
+    const percentScores = rawScores.map((val, idx) => (val / maxScores[idx]) * 100);
+    
+    const radarCtx = document.getElementById('leadershipRadarChart').getContext('2d');
+    let radarChart = new Chart(radarCtx, {
+        type: 'radar',
+        data: {
+            labels: styleLabels,
+            datasets: [{
+                label: '风格强度百分比 (%)',
+                data: percentScores,
+                backgroundColor: 'rgba(44, 95, 138, 0.2)',
+                borderColor: '#2c5f8a',
+                borderWidth: 2,
+                pointBackgroundColor: '#eab308',
+                pointBorderColor: '#1e4663',
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { stepSize: 20, callback: function(val) { return val + '%'; }, backdropColor: 'transparent' },
+                    grid: { color: '#e2e8f0' },
+                    angleLines: { color: '#e2e8f0' },
+                    pointLabels: { font: { size: 11, weight: '500' }, color: '#1e4663' }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const idx = context.dataIndex;
+                            const percentVal = context.raw;
+                            const rawVal = rawScores[idx];
+                            const maxVal = maxScores[idx];
+                            return `${styleLabels[idx]}: ${percentVal.toFixed(1)}%  (原始分 ${rawVal}/${maxVal})`;
+                        }
+                    }
+                },
+                legend: { position: 'top', labels: { font: { size: 11 } } }
+            },
+            elements: { line: { tension: 0 } }
+        }
+    });
+
+    // 2. 仪表盘绘制
+    const gaugeCanvas = document.getElementById('scoreGauge');
+    let ctxGauge = gaugeCanvas.getContext('2d');
+    const centerX = 200, centerY = 180, radius = 150;
+    const startAngle = -Math.PI, endAngle = 0;
+    const segments = [
+        { start: 0, end: 59, color: '#9ca3af', label: '待发展型' },
+        { start: 60, end: 74, color: '#60a5fa', label: '成长型' },
+        { start: 75, end: 89, color: '#eab308', label: '进取型' },
+        { start: 90, end: 100, color: '#10b981', label: '卓越型' }
+    ];
+    const score = 82.4;
+    
+    function angleForScore(scoreValue) {
+        const t = Math.min(1, Math.max(0, scoreValue / 100));
+        return startAngle + t * (endAngle - startAngle);
+    }
+    
+    function drawGauge() {
+        if (!ctxGauge) return;
+        ctxGauge.clearRect(0, 0, gaugeCanvas.width, gaugeCanvas.height);
+        for (let seg of segments) {
+            const startPercent = seg.start / 100;
+            const endPercent = seg.end / 100;
+            const startAng = startAngle + startPercent * (endAngle - startAngle);
+            const endAng = startAngle + endPercent * (endAngle - startAngle);
+            ctxGauge.beginPath();
+            ctxGauge.arc(centerX, centerY, radius, startAng, endAng);
+            ctxGauge.lineWidth = 18;
+            ctxGauge.strokeStyle = seg.color;
+            ctxGauge.stroke();
+        }
+        for (let i = 0; i <= 100; i += 10) {
+            const angle = angleForScore(i);
+            const innerX = centerX + (radius - 12) * Math.cos(angle);
+            const innerY = centerY + (radius - 12) * Math.sin(angle);
+            const outerX = centerX + (radius + 4) * Math.cos(angle);
+            const outerY = centerY + (radius + 4) * Math.sin(angle);
+            ctxGauge.beginPath();
+            ctxGauge.moveTo(innerX, innerY);
+            ctxGauge.lineTo(outerX, outerY);
+            ctxGauge.lineWidth = 1.5;
+            ctxGauge.strokeStyle = '#1e4663';
+            ctxGauge.stroke();
+            if (i % 20 === 0) {
+                const textX = centerX + (radius + 12) * Math.cos(angle);
+                const textY = centerY + (radius + 12) * Math.sin(angle) + 4;
+                ctxGauge.font = 'bold 10px "Segoe UI"';
+                ctxGauge.fillStyle = '#1e4663';
+                ctxGauge.fillText(i.toString(), textX - 6, textY);
+            }
+        }
+        const pointerAngle = angleForScore(score);
+        const pointerLength = radius - 20;
+        const arrowX = centerX + pointerLength * Math.cos(pointerAngle);
+        const arrowY = centerY + pointerLength * Math.sin(pointerAngle);
+        ctxGauge.beginPath();
+        ctxGauge.moveTo(centerX - 5, centerY - 5);
+        ctxGauge.lineTo(centerX + 5, centerY - 5);
+        ctxGauge.lineTo(arrowX, arrowY);
+        ctxGauge.fillStyle = '#c2410c';
+        ctxGauge.fill();
+        ctxGauge.beginPath();
+        ctxGauge.arc(centerX, centerY, 6, 0, 2 * Math.PI);
+        ctxGauge.fillStyle = '#c2410c';
+        ctxGauge.fill();
+        ctxGauge.beginPath();
+        ctxGauge.arc(centerX, centerY, 3, 0, 2 * Math.PI);
+        ctxGauge.fillStyle = '#fff';
+        ctxGauge.fill();
+        ctxGauge.font = 'bold 28px "Segoe UI", "Roboto"';
+        ctxGauge.fillStyle = '#1e4663';
+        ctxGauge.textAlign = 'center';
+        ctxGauge.textBaseline = 'middle';
+        ctxGauge.fillText(score.toFixed(1), centerX, centerY - 25);
+        ctxGauge.font = '12px "Segoe UI"';
+        ctxGauge.fillStyle = '#5f6f82';
+        ctxGauge.fillText('综合得分', centerX, centerY - 2);
+        let currentGrade = '';
+        for (let seg of segments) {
+            if (score >= seg.start && score <= seg.end) { currentGrade = seg.label; break; }
+        }
+        ctxGauge.font = 'bold 14px "Segoe UI"';
+        ctxGauge.fillStyle = '#eab308';
+        ctxGauge.fillText(currentGrade, centerX, centerY + 35);
+    }
+    
+    drawGauge();
+    window.addEventListener('resize', () => drawGauge());
+    window.addEventListener('beforeprint', function() {
+        drawGauge();
+        if (radarChart) radarChart.update();
+    });
+    window.addEventListener('load', function() {
+        drawGauge();
+        if (radarChart) radarChart.update();
+    });
+</script>
+</body>
+</html>

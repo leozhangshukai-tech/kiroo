@@ -9,7 +9,7 @@ const router = express.Router();
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
-  const { phone, password, nickname } = req.body;
+  const { phone, password, nickname, identity_type } = req.body;
 
   if (!phone || !/^\d{11}$/.test(phone)) {
     return res.status(400).json({ error: '请输入正确的手机号' });
@@ -20,6 +20,10 @@ router.post('/register', async (req, res) => {
   if (!nickname || nickname.trim().length === 0 || nickname.length > 50) {
     return res.status(400).json({ error: '姓名不能为空且不超过50字' });
   }
+
+  // 验证身份类型
+  const validTypes = ['student', 'successor'];
+  const userIdentity = validTypes.includes(identity_type) ? identity_type : 'student';
 
   const conn = await pool.getConnection();
   try {
@@ -37,8 +41,8 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const [userResult] = await conn.query(
-      'INSERT INTO users (nickname, phone) VALUES (?, ?)',
-      [nickname || '用户', phone]
+      'INSERT INTO users (nickname, phone, identity_type) VALUES (?, ?, ?)',
+      [nickname || '用户', phone, userIdentity]
     );
     const userId = userResult.insertId;
 
@@ -60,7 +64,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: userId, nickname: nickname || '用户', phone },
+      user: { id: userId, nickname: nickname || '用户', phone, identity_type: userIdentity },
     });
   } catch (err) {
     await conn.rollback();
@@ -82,7 +86,7 @@ router.post('/login/password', async (req, res) => {
   try {
     // Find password auth method
     const [rows] = await pool.query(
-      `SELECT u.id, u.nickname, u.phone, uam.credential
+      `SELECT u.id, u.nickname, u.phone, u.identity_type, uam.credential
        FROM user_auth_methods uam
        JOIN users u ON u.id = uam.user_id
        WHERE uam.auth_type = 'password' AND uam.identifier = ?`,
@@ -103,7 +107,7 @@ router.post('/login/password', async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, nickname: user.nickname, phone: user.phone },
+      user: { id: user.id, nickname: user.nickname, phone: user.phone, identity_type: user.identity_type || 'student' },
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -192,7 +196,7 @@ router.post('/login/phone', async (req, res) => {
 
     // Find or create user
     const [existing] = await conn.query(
-      `SELECT u.id, u.nickname, u.phone
+      `SELECT u.id, u.nickname, u.phone, u.identity_type
        FROM user_auth_methods uam
        JOIN users u ON u.id = uam.user_id
        WHERE uam.auth_type = 'phone' AND uam.identifier = ?`,
@@ -235,7 +239,7 @@ router.post('/login/phone', async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, nickname: user.nickname, phone: user.phone },
+      user: { id: user.id, nickname: user.nickname, phone: user.phone, identity_type: user.identity_type || 'student' },
     });
   } catch (err) {
     await conn.rollback();
@@ -250,7 +254,7 @@ router.post('/login/phone', async (req, res) => {
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, nickname, phone, created_at FROM users WHERE id = ?',
+      'SELECT id, nickname, phone, identity_type, created_at FROM users WHERE id = ?',
       [req.user.id]
     );
     if (rows.length === 0) {
@@ -319,6 +323,27 @@ router.post('/update-nickname', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Update nickname error:', err);
     res.status(500).json({ error: '修改姓名失败' });
+  }
+});
+
+// POST /api/auth/update-identity
+router.post('/update-identity', authMiddleware, async (req, res) => {
+  const { identity_type } = req.body;
+
+  if (!identity_type || !['student', 'successor'].includes(identity_type)) {
+    return res.status(400).json({ error: '无效的身份类型' });
+  }
+
+  try {
+    await pool.query(
+      'UPDATE users SET identity_type = ?, updated_at = datetime(\'now\') WHERE id = ?',
+      [identity_type, req.user.id]
+    );
+
+    res.json({ message: '身份修改成功', identity_type });
+  } catch (err) {
+    console.error('Update identity error:', err);
+    res.status(500).json({ error: '修改身份失败' });
   }
 });
 

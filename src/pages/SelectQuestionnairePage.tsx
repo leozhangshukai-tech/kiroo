@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAssessment } from '../context/AssessmentContext'
 import { useAuth } from '../context/AuthContext'
 import { sessionService } from '../services/sessionService'
-import { QUESTIONNAIRE_PRIORITY, LZU_QUESTIONNAIRE_PRIORITY, IS_LZU_MODE } from '../types'
+import { QUESTIONNAIRE_PRIORITY, LZU_QUESTIONNAIRE_PRIORITY, SUCCESSOR_QUESTIONNAIRE_PRIORITY, IS_LZU_MODE } from '../types'
+import SuccessorPlaceholder from '../components/SuccessorPlaceholder'
 
 export default function SelectQuestionnairePage() {
   const { state, dispatch } = useAssessment()
@@ -44,7 +45,17 @@ export default function SelectQuestionnairePage() {
     state.questionnaires.filter(q => q.enabled).map(q => q.id)
   )
 
-  const priorityList = IS_LZU_MODE ? LZU_QUESTIONNAIRE_PRIORITY : QUESTIONNAIRE_PRIORITY
+  // 根据用户身份选择对应的问卷配置
+  const priorityList = useMemo(() => {
+    if (user?.identity_type === 'successor') {
+      // 二代版：如果有专属题库则用，否则降级到通用
+      return SUCCESSOR_QUESTIONNAIRE_PRIORITY.length > 0
+        ? SUCCESSOR_QUESTIONNAIRE_PRIORITY
+        : (IS_LZU_MODE ? LZU_QUESTIONNAIRE_PRIORITY : QUESTIONNAIRE_PRIORITY)
+    }
+    // 学生版
+    return IS_LZU_MODE ? LZU_QUESTIONNAIRE_PRIORITY : QUESTIONNAIRE_PRIORITY
+  }, [user?.identity_type])
 
   const availableQuestionnaires = priorityList.filter(q =>
     enabledIds.has(q.id)
@@ -151,6 +162,11 @@ export default function SelectQuestionnairePage() {
 
     if (!user) return null
 
+    // 二代用户：显示"系统完善中"页面
+    if (user.identity_type === 'successor') {
+      return <SuccessorPlaceholder />
+    }
+
     // 兰大模式：正在自动创建session
     if (submitting && !hasExistingSession) {
       return (
@@ -180,7 +196,7 @@ export default function SelectQuestionnairePage() {
         <div className="min-h-screen bg-[#fafafa] pb-20">
           <header className="bg-white border-b border-black/[0.04] sticky top-0 z-40">
             <div className="flex items-center justify-between px-6 h-14 max-w-2xl mx-auto">
-              <h1 className="text-lg font-bold text-[#1a1a2e]">兰大研究生职业发展测评</h1>
+              <h1 className="text-lg font-bold text-[#1a1a2e]">大学生职业发展测评</h1>
             </div>
           </header>
           <main className="px-6 py-6 max-w-2xl mx-auto">
@@ -216,6 +232,11 @@ export default function SelectQuestionnairePage() {
   }
 
   if (!user) return null
+
+  // 二代用户：显示"系统完善中"页面
+  if (user.identity_type === 'successor') {
+    return <SuccessorPlaceholder />
+  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] pb-20">
